@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kertauskurssin porkkanalappu</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#fafaf7;--fg:#222;--line:#bbb;--cell:#fff;--ex:#d9dbe0;--hw:#f3dc9a;--done:#3f9b52;--donefg:#fff;--muted:#666;--card:#fff;--weak:#e8742a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17181a;--fg:#eee;--line:#444;--cell:#222428;--ex:#4a4d55;--hw:#7a6422;--done:#3f9b52;--muted:#aaa;--card:#1f2124}}
+:root[data-theme="dark"]{--bg:#17181a;--fg:#eee;--line:#444;--cell:#222428;--ex:#4a4d55;--hw:#7a6422;--done:#3f9b52;--muted:#aaa;--card:#1f2124}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;padding:12px}
+h1{margin:0 0 4px;font-size:22px}
+.top{max-width:1100px;margin:0 auto}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px;color:var(--muted);margin:6px 0 10px}
+.sw{display:inline-block;width:14px;height:14px;border:1px solid var(--line);vertical-align:-2px;margin-right:4px;border-radius:3px}
+.bar{height:10px;background:var(--ex);border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--done);width:0;transition:width .2s}
+#status{font-size:12px;color:var(--muted);margin:6px 0 12px}
+.row{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:0 auto 8px;max-width:1100px}
+.rh{display:flex;justify-content:space-between;gap:8px;font-weight:600;margin-bottom:6px}
+.rh span{font-weight:400;color:var(--muted);white-space:nowrap}
+.cells{display:flex;flex-wrap:wrap;gap:4px}
+.c{position:relative;touch-action:manipulation;user-select:none;-webkit-user-select:none;min-width:44px;height:36px;padding:0 4px;border:1px solid var(--line);background:var(--cell);color:var(--fg);border-radius:5px;font:inherit;font-size:13px;cursor:pointer}
+.c.ex{background:var(--ex);font-weight:700}
+.c.hw{background:var(--hw)}
+.c.on{box-shadow:inset 0 0 0 3px var(--done)}
+.c.weak{box-shadow:inset 0 0 0 3px var(--weak)}
+.c.on::after,.c.weak::after{position:absolute;top:-7px;right:-5px;width:16px;height:16px;border-radius:50%;color:#fff;font-size:11px;line-height:16px;font-weight:700;text-align:center}
+.c.on::after{content:"✓";background:var(--done)}
+.c.weak::after{content:"!";background:var(--weak)}
+.c.skip{text-decoration:line-through;opacity:.6}
+.sw2{display:flex;align-items:center;gap:10px;margin:0 0 10px;font-size:14px}
+.sw2 input{display:none}
+.sw2 .tr{width:42px;height:24px;border-radius:12px;background:var(--ex);position:relative;transition:background .15s;flex:none}
+.sw2 .tr::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s}
+.sw2 input:checked+.tr{background:var(--done)}
+.sw2 input:checked+.tr::after{transform:translateX(18px)}
+#dlg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:10;padding:16px}
+#dlg.show{display:flex}
+#dlg .box{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:18px;max-width:320px;width:100%}
+#dlg .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+#dlg button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--cell);color:var(--fg);cursor:pointer}
+#dlg button.ok{background:var(--weak);border-color:var(--weak);color:#fff}
+.foot{max-width:1100px;margin:10px auto;font-size:12px;color:var(--muted)}
+button.r{margin-top:6px;font-size:12px;background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:4px 8px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="top">
+<h1>🥕 Kertauskurssin porkkanalappu</h1>
+<div class="legend">
+<span><i class="sw" style="background:var(--ex)"></i>Lihavoitu = tuntiesimerkki</span>
+<span><i class="sw" style="background:var(--hw)"></i>Keltainen = yhteiset kotitehtävät</span>
+<span><i class="sw" style="border:3px solid var(--done)"></i>Tehty (napautus)</span>
+<span><i class="sw" style="border:3px solid var(--weak)"></i>Tehty, mutta osasin heikommin (nopea kaksoisnapautus)</span>
+</div>
+<label class="sw2"><input type="checkbox" id="nc"><span class="tr"></span><span>Älä kysy varmistusta merkinnän poistossa</span></label>
+<div class="bar"><i id="tot"></i></div>
+<div id="status">Ladataan…</div>
+</div>
+<div id="app"></div>
+<div class="foot">Parittomien tehtävien malliratkaisut ovat näkyvillä ja parillisten ei. Napautus: tehty. Nopea kaksoisnapautus: heikommin osattu. Napautus tehtyyn ruutuun poistaa merkinnän.<br><button class="r" id="cp">Kopioi oma linkki (avaa toisella laitteella)</button> <button class="r" id="reset">Nollaa kaikki</button></div>
+<div id="dlg"><div class="box"><div id="dtxt"></div><div class="btns"><button id="dno">Peruuta</button><button class="ok" id="dyes">Poista</button></div></div></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const T=[
+["Luvut ja laskutoimitukset (MAY1)",26,[13,15,24],[6,8,22]],
+["Polynomifunktiot (MAY1 ja MAA2)",25,[14,15,17],[12,16,22]],
+["Rationaali- ja juurifunktiot (MAA2)",23,[11,14,15],[6,8]],
+["Tasogeometria (MAA3)",22,[8,15,17],[4,10,12]],
+["Avaruusgeometria (MAA3)",21,[5,7,18],[4,10]],
+["Analyyttinen geometria (MAA4)",30,[8,13,19],[14,18,28]],
+["Vektorit (MAA4)",22,[9,11,14],[4,10,12]],
+["Trigonometriset funktiot (MAA5)",23,[9,11,16],[2,8,10,14]],
+["Eksponentti- ja logaritmifunktio (MAA5)",25,[7,11,16],[4,6,20]],
+["Funktion raja-arvo, jatkuvuus ja derivaatta (MAA6)",26,[7,9,11],[8,12,16]],
+["Derivointi (MAA6)",26,[5,11,16],[4,6,14]],
+["Funktion kulun tutkiminen (MAA6)",25,[5,11,14],[2,6,12]],
+["Integrointi (MAA7)",25,[7,9,15],[2,8,20]],
+["Pinta-ala ja tilavuus integroimalla (MAA7)",25,[5,11,14],[4,8,18]],
+["Tilastot ja todennäköisyys (MAA8)",30,[5,9,19],[4,8,10]],
+["Talousmatematiikka (MAA9)",27,[7,9,14],[4,6,18]],
+["3D-geometria (MAA10)",24,[7,9,18],[2,8,12,16]],
+["Algoritmit ja lukuteoria (MAA11)",23,[5,11],[2,4,10]],
+["Analyysi ja jatkuva jakauma (MAA12)",26,[5,7,12],[2,4,10]]];
+let noConfirm=false, done=new Set(), weak=new Set(), ref=null, saveTimer=null, mode="local";
+const app=document.getElementById('app'), st=document.getElementById('status');
+const btns={};
+T.forEach((t,i)=>{
+ const n=i+1,row=document.createElement('div');row.className='row';
+ row.innerHTML=`<div class="rh"><div>${n} ${t[0]}</div><span id="p${n}"></span></div><div class="cells"></div>`;
+ const cs=row.querySelector('.cells');
+ for(let k=1;k<=t[1];k++){
+  const id=n+'.'+k,b=document.createElement('button');
+  b.className='c'+(t[3].includes(k)?' ex':'')+(t[2].includes(k)?' hw':'');
+  b.textContent=id;attach(b,id);btns[id]=b;cs.appendChild(b);
+ }
+ app.appendChild(row);
+});
+function render(){
+ let total=0,ok=0,wk=0;
+ T.forEach((t,i)=>{const n=i+1;let d=0;
+  for(let k=1;k<=t[1];k++){const id=n+'.'+k;const on=done.has(id);const w=weak.has(id);btns[id].classList.toggle('on',on);btns[id].classList.toggle('weak',w);if(on||w)d++;}
+  document.getElementById('p'+n).textContent=d+'/'+t[1];total+=t[1];ok+=d;});wk=weak.size;
+ document.getElementById('tot').style.width=(ok/total*100)+'%';
+ const label=ok+' / '+total+' tehty ('+Math.round(ok/total*100)+' %), heikommin: '+wk;
+ st.textContent=label+(mode==='cloud'?' · tallentuu pilveen, näkyy kaikilla laitteilla':' · tallennus vain tähän selaimeen (pilviyhteys ei toimi)');
+}
+function lsGet(){try{const v=JSON.parse(localStorage.getItem('porkkana')||'[]');return Array.isArray(v)?{done:v,weak:[]}:v}catch(e){return{done:[],weak:[]}}}
+function lsSet(){try{localStorage.setItem('porkkana',JSON.stringify({done:[...done],weak:[...weak],noConfirm}))}catch(e){}}
+let inflight=0;
+function save(){
+ lsSet();
+ if(!ref)return;
+ clearTimeout(saveTimer);
+ saveTimer=setTimeout(()=>{
+  saveTimer=null;inflight++;
+  ref.set({done:[...done],weak:[...weak],noConfirm}).catch(()=>{mode='local';render()}).finally(()=>{inflight--});
+ },400);
+}
+const DBL=300;let last={id:null,t:0},pending=null;
+function removeMark(id){
+ if(noConfirm){done.delete(id);weak.delete(id);render();save()}
+ else ask('Poistetaanko merkintä tehtävästä '+id+'?',()=>{done.delete(id);weak.delete(id);render();save()});
+}
+function setWeak(id){done.delete(id);weak.add(id);render();save();}
+function toggle(id){
+ const now=Date.now(),quick=last.id===id&&now-last.t<DBL;
+ last={id,t:now};
+ if(done.has(id)){
+  if(pending&&pending.id===id){clearTimeout(pending.timer);pending=null;setWeak(id);return}
+  if(quick){setWeak(id);return}
+  pending={id,timer:setTimeout(()=>{pending=null;removeMark(id)},DBL)};
+ }else if(weak.has(id)){
+  if(quick)return;
+  removeMark(id);
+ }else{done.add(id);render();save()}
+}
+function ask(txt,cb){
+ const d=document.getElementById('dlg');document.getElementById('dtxt').textContent=txt;d.classList.add('show');
+ const close=()=>{d.classList.remove('show')};
+ document.getElementById('dno').onclick=close;
+ document.getElementById('dyes').onclick=()=>{close();cb()};
+ d.onclick=e=>{if(e.target===d)close()};
+}
+function attach(b,id){b.addEventListener('click',()=>toggle(id));}
+document.getElementById('reset').onclick=()=>{ask('Nollataanko kaikki merkinnät?',()=>{done=new Set();weak=new Set();render();save()});};
+{const l=lsGet();done=new Set(l.done||[]);weak=new Set(l.weak||[]);noConfirm=!!l.noConfirm;}
+const nc=document.getElementById('nc');nc.checked=noConfirm;nc.onchange=()=>{noConfirm=nc.checked;save()};
+render();
+(function(){
+ try{
+  firebase.initializeApp({
+   apiKey:"AIzaSyAWRcqNARalkSI7tjDvln-i1j8-LUdoSDo",
+   authDomain:"maa13-25415.firebaseapp.com",
+   projectId:"maa13-25415",
+   storageBucket:"maa13-25415.firebasestorage.app",
+   messagingSenderId:"100166272652",
+   appId:"1:100166272652:web:50cbe37e7c0c911a595da9"
+  });
+  const db=firebase.firestore();
+  let code=location.hash.replace('#','').trim();
+  if(code.length<12){
+   try{code=localStorage.getItem('porkkana_code')||''}catch(e){}
+   if(code.length<12){
+    const a=new Uint8Array(12);crypto.getRandomValues(a);
+    code=[...a].map(x=>'abcdefghjkmnpqrstuvwxyz23456789'[x%31]).join('');
+   }
+   history.replaceState(null,'','#'+code);
+  }
+  try{localStorage.setItem('porkkana_code',code)}catch(e){}
+  ref=db.collection('lists').doc(code);
+  mode='cloud';
+  ref.onSnapshot(s=>{
+   if(saveTimer||inflight>0||(s.metadata&&s.metadata.hasPendingWrites))return;
+   if(s.exists){const d=s.data();done=new Set(d.done||[]);weak=new Set(d.weak||[]);noConfirm=!!d.noConfirm;nc.checked=noConfirm;lsSet();}
+   else if(done.size||weak.size){ref.set({done:[...done],weak:[...weak],noConfirm}).catch(()=>{});}
+   render();
+  },()=>{mode='local';render()});
+ }catch(e){mode='local';render()}
+})();
+document.getElementById('cp').onclick=()=>{
+ const u=location.href;
+ (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>alert('Linkki kopioitu. Avaa se toisella laitteella.'),()=>prompt('Kopioi tämä linkki:',u));
+};
+</script>
+</body>
+</html>
