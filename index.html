@@ -6,7 +6,7 @@
 <title>Kertauskurssin porkkanalappu</title>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
---bg:#fafaf7;--fg:#222;--line:#bbb;--cell:#fff;--ex:#d9dbe0;--hw:#f3dc9a;--done:#3f9b52;--donefg:#fff;--muted:#666;--card:#fff;--weak:#e8742a}
+--bg:#fafaf7;--fg:#222;--line:#bbb;--cell:#fff;--ex:#d9dbe0;--hw:#f3dc9a;--done:#3f9b52;--donefg:#fff;--muted:#666;--card:#fff;--weak:#e8742a;--later:#7b5cd6}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17181a;--fg:#eee;--line:#444;--cell:#222428;--ex:#4a4d55;--hw:#7a6422;--done:#3f9b52;--muted:#aaa;--card:#1f2124}}
 :root[data-theme="dark"]{--bg:#17181a;--fg:#eee;--line:#444;--cell:#222428;--ex:#4a4d55;--hw:#7a6422;--done:#3f9b52;--muted:#aaa;--card:#1f2124}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -27,9 +27,11 @@ h1{margin:0 0 4px;font-size:22px}
 .c.hw{background:var(--hw)}
 .c.on{box-shadow:inset 0 0 0 3px var(--done)}
 .c.weak{box-shadow:inset 0 0 0 3px var(--weak)}
-.c.on::after,.c.weak::after{position:absolute;top:-7px;right:-5px;width:16px;height:16px;border-radius:50%;color:#fff;font-size:11px;line-height:16px;font-weight:700;text-align:center}
+.c.later{box-shadow:inset 0 0 0 3px var(--later)}
+.c.on::after,.c.weak::after,.c.later::after{position:absolute;top:-7px;right:-5px;width:16px;height:16px;border-radius:50%;color:#fff;font-size:11px;line-height:16px;font-weight:700;text-align:center}
 .c.on::after{content:"✓";background:var(--done)}
 .c.weak::after{content:"!";background:var(--weak)}
+.c.later::after{content:"★";background:var(--later)}
 .c.skip{text-decoration:line-through;opacity:.6}
 .sw2{display:flex;align-items:center;gap:10px;margin:0 0 10px;font-size:14px}
 .sw2 input{display:none}
@@ -55,13 +57,14 @@ button.r{margin-top:6px;font-size:12px;background:none;border:1px solid var(--li
 <span><i class="sw" style="background:var(--hw)"></i>Keltainen = yhteiset kotitehtävät</span>
 <span><i class="sw" style="border:3px solid var(--done)"></i>Tehty (napautus)</span>
 <span><i class="sw" style="border:3px solid var(--weak)"></i>Tehty, mutta osasin heikommin (nopea kaksoisnapautus)</span>
+<span><i class="sw" style="border:3px solid var(--later)"></i>Hyvä tehtävä tehtäväksi myöhemmin (nopea kolminapautus)</span>
 </div>
 <label class="sw2"><input type="checkbox" id="nc"><span class="tr"></span><span>Älä kysy varmistusta merkinnän poistossa</span></label>
 <div class="bar"><i id="tot"></i></div>
 <div id="status">Ladataan…</div>
 </div>
 <div id="app"></div>
-<div class="foot">Parittomien tehtävien malliratkaisut ovat näkyvillä ja parillisten ei. Napautus: tehty. Nopea kaksoisnapautus: heikommin osattu. Napautus tehtyyn ruutuun poistaa merkinnän.<br><button class="r" id="cp">Kopioi oma linkki (avaa toisella laitteella)</button> <button class="r" id="reset">Nollaa kaikki</button></div>
+<div class="foot">Parittomien tehtävien malliratkaisut ovat näkyvillä ja parillisten ei. Napautus: tehty. Nopea kaksoisnapautus: heikommin osattu. Nopea kolminapautus: tee myöhemmin. Napautus merkittyyn ruutuun poistaa merkinnän.<br><button class="r" id="cp">Kopioi oma linkki (avaa toisella laitteella)</button> <button class="r" id="reset">Nollaa kaikki</button></div>
 <div id="dlg"><div class="box"><div id="dtxt"></div><div class="btns"><button id="dno">Peruuta</button><button class="ok" id="dyes">Poista</button></div></div></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -86,7 +89,7 @@ const T=[
 ["3D-geometria (MAA10)",24,[7,9,18],[2,8,12,16]],
 ["Algoritmit ja lukuteoria (MAA11)",23,[5,11],[2,4,10]],
 ["Analyysi ja jatkuva jakauma (MAA12)",26,[5,7,12],[2,4,10]]];
-let noConfirm=false, done=new Set(), weak=new Set(), ref=null, saveTimer=null, mode="local";
+let noConfirm=false, done=new Set(), weak=new Set(), later=new Set(), ref=null, saveTimer=null, mode="local";
 const app=document.getElementById('app'), st=document.getElementById('status');
 const btns={};
 T.forEach((t,i)=>{
@@ -103,14 +106,14 @@ T.forEach((t,i)=>{
 function render(){
  let total=0,ok=0,wk=0;
  T.forEach((t,i)=>{const n=i+1;let d=0;
-  for(let k=1;k<=t[1];k++){const id=n+'.'+k;const on=done.has(id);const w=weak.has(id);btns[id].classList.toggle('on',on);btns[id].classList.toggle('weak',w);if(on||w)d++;}
+  for(let k=1;k<=t[1];k++){const id=n+'.'+k;const on=done.has(id);const w=weak.has(id);btns[id].classList.toggle('on',on);btns[id].classList.toggle('weak',w);btns[id].classList.toggle('later',later.has(id));if(on||w)d++;}
   document.getElementById('p'+n).textContent=d+'/'+t[1];total+=t[1];ok+=d;});wk=weak.size;
  document.getElementById('tot').style.width=(ok/total*100)+'%';
- const label=ok+' / '+total+' tehty ('+Math.round(ok/total*100)+' %), heikommin: '+wk;
+ const label=ok+' / '+total+' tehty ('+Math.round(ok/total*100)+' %), heikommin: '+wk+', myöhemmin: '+later.size;
  st.textContent=label+(mode==='cloud'?' · tallentuu pilveen, näkyy kaikilla laitteilla':' · tallennus vain tähän selaimeen (pilviyhteys ei toimi)');
 }
-function lsGet(){try{const v=JSON.parse(localStorage.getItem('porkkana')||'[]');return Array.isArray(v)?{done:v,weak:[]}:v}catch(e){return{done:[],weak:[]}}}
-function lsSet(){try{localStorage.setItem('porkkana',JSON.stringify({done:[...done],weak:[...weak],noConfirm}))}catch(e){}}
+function lsGet(){try{const v=JSON.parse(localStorage.getItem('porkkana')||'[]');return Array.isArray(v)?{done:v,weak:[],later:[]}:v}catch(e){return{done:[],weak:[],later:[]}}}
+function lsSet(){try{localStorage.setItem('porkkana',JSON.stringify({done:[...done],weak:[...weak],later:[...later],noConfirm}))}catch(e){}}
 let inflight=0;
 function save(){
  lsSet();
@@ -118,15 +121,16 @@ function save(){
  clearTimeout(saveTimer);
  saveTimer=setTimeout(()=>{
   saveTimer=null;inflight++;
-  ref.set({done:[...done],weak:[...weak],noConfirm}).catch(()=>{mode='local';render()}).finally(()=>{inflight--});
+  ref.set({done:[...done],weak:[...weak],later:[...later],noConfirm}).catch(()=>{mode='local';render()}).finally(()=>{inflight--});
  },400);
 }
 const DBL=300;let last={id:null,t:0},pending=null;
 function removeMark(id){
- if(noConfirm){done.delete(id);weak.delete(id);render();save()}
- else ask('Poistetaanko merkintä tehtävästä '+id+'?',()=>{done.delete(id);weak.delete(id);render();save()});
+ if(noConfirm){done.delete(id);weak.delete(id);later.delete(id);render();save()}
+ else ask('Poistetaanko merkintä tehtävästä '+id+'?',()=>{done.delete(id);weak.delete(id);later.delete(id);render();save()});
 }
-function setWeak(id){done.delete(id);weak.add(id);render();save();}
+function setWeak(id){done.delete(id);later.delete(id);weak.add(id);render();save();}
+function setLater(id){done.delete(id);weak.delete(id);later.add(id);render();save();}
 function toggle(id){
  const now=Date.now(),quick=last.id===id&&now-last.t<DBL;
  last={id,t:now};
@@ -135,6 +139,9 @@ function toggle(id){
   if(quick){setWeak(id);return}
   pending={id,timer:setTimeout(()=>{pending=null;removeMark(id)},DBL)};
  }else if(weak.has(id)){
+  if(quick){setLater(id);return}
+  removeMark(id);
+ }else if(later.has(id)){
   if(quick)return;
   removeMark(id);
  }else{done.add(id);render();save()}
@@ -147,8 +154,8 @@ function ask(txt,cb){
  d.onclick=e=>{if(e.target===d)close()};
 }
 function attach(b,id){b.addEventListener('click',()=>toggle(id));}
-document.getElementById('reset').onclick=()=>{ask('Nollataanko kaikki merkinnät?',()=>{done=new Set();weak=new Set();render();save()});};
-{const l=lsGet();done=new Set(l.done||[]);weak=new Set(l.weak||[]);noConfirm=!!l.noConfirm;}
+document.getElementById('reset').onclick=()=>{ask('Nollataanko kaikki merkinnät?',()=>{done=new Set();weak=new Set();later=new Set();render();save()});};
+{const l=lsGet();done=new Set(l.done||[]);weak=new Set(l.weak||[]);later=new Set(l.later||[]);noConfirm=!!l.noConfirm;}
 const nc=document.getElementById('nc');nc.checked=noConfirm;nc.onchange=()=>{noConfirm=nc.checked;save()};
 render();
 (function(){
@@ -176,8 +183,8 @@ render();
   mode='cloud';
   ref.onSnapshot(s=>{
    if(saveTimer||inflight>0||(s.metadata&&s.metadata.hasPendingWrites))return;
-   if(s.exists){const d=s.data();done=new Set(d.done||[]);weak=new Set(d.weak||[]);noConfirm=!!d.noConfirm;nc.checked=noConfirm;lsSet();}
-   else if(done.size||weak.size){ref.set({done:[...done],weak:[...weak],noConfirm}).catch(()=>{});}
+   if(s.exists){const d=s.data();done=new Set(d.done||[]);weak=new Set(d.weak||[]);later=new Set(d.later||[]);noConfirm=!!d.noConfirm;nc.checked=noConfirm;lsSet();}
+   else if(done.size||weak.size||later.size){ref.set({done:[...done],weak:[...weak],later:[...later],noConfirm}).catch(()=>{});}
    render();
   },()=>{mode='local';render()});
  }catch(e){mode='local';render()}
